@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { envYTAPIKEY } from "@/config/envVars";
+import { envYTAPIKEY, envYTCLIENTID } from "@/config/envVars";
 import { Input } from "@nextui-org/input";
 import { Button } from "@nextui-org/button";
 import { Divider } from "@nextui-org/divider";
 import Image from "next/image";
 import Link from "next/link";
+import { gapi } from "gapi-script";
 
 const LikeComp = () => {
   const [comments, setComments] = useState([]);
@@ -73,9 +74,50 @@ const LikeComp = () => {
     }
   };
 
+  const loadClient = () => {
+    const start = () =>
+      gapi.client.init({
+        apiKey: ytAPIKey || "",
+        clientId: envYTCLIENTID,
+        discoveryDocs: [
+          "https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest",
+        ],
+        scope: "https://www.googleapis.com/auth/youtube.force-ssl",
+      });
+
+    gapi.load("client:auth2", start);
+  };
+
+  const authenticate = async () => {
+    await gapi.auth2
+      .getAuthInstance()
+      .signIn()
+      .then(() => console.log("Sign-in successful"))
+      .catch((err: any) => console.error("Error signing in", err));
+  };
+
+  const execute = () => {
+    gapi.client.youtube.commentThreads
+      .insert({
+        part: ["snippet"],
+        resource: {
+          snippet: {
+            videoId: videoId,
+            topLevelComment: {
+              snippet: {
+                textOriginal: "This is a test comment - <>",
+              },
+            },
+          },
+        },
+      })
+      .then((response: any) => console.log("Response", response))
+      .catch((err: any) => console.error("Execute error", err));
+  };
+
   return (
     <>
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-8 mt-4">
         <div className="flex items-center justify-center gap-4 mt-4">
           <Input
             onChange={(e) => fetchVideoId(e.target.value)}
@@ -132,6 +174,10 @@ const LikeComp = () => {
               </>
             ))}
         </div>
+        <button onClick={() => authenticate().then(loadClient)}>
+          Authorize and Load
+        </button>
+        <button onClick={execute}>Execute</button>
       </div>
     </>
   );
