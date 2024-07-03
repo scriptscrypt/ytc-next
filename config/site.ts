@@ -1,8 +1,8 @@
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
-  name: "Next.js + NextUI",
-  description: "Make beautiful websites regardless of your design experience.",
+  name: "YTC - Youtube Comment Tool",
+  description: "Your Youtube comments simplified and sorted just like that",
   navItems: [
     {
       label: "Home",
