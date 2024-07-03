@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useState } from "react";
 import axios from "axios";
 import { envYTAPIKEY, envYTCLIENTID } from "@/config/envVars";
 import { Input } from "@nextui-org/input";
@@ -74,46 +75,46 @@ const LikeComp = () => {
     }
   };
 
-  const loadClient = () => {
-    const start = () =>
-      gapi.client.init({
-        apiKey: ytAPIKey || "",
-        clientId: envYTCLIENTID,
-        discoveryDocs: [
-          "https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest",
-        ],
-        scope: "https://www.googleapis.com/auth/youtube.force-ssl",
-      });
+  // const loadClient = () => {
+  //   const start = () =>
+  //     gapi.client.init({
+  //       apiKey: ytAPIKey || "",
+  //       clientId: envYTCLIENTID,
+  //       discoveryDocs: [
+  //         "https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest",
+  //       ],
+  //       scope: "https://www.googleapis.com/auth/youtube.force-ssl",
+  //     });
 
-    gapi.load("client:auth2", start);
-  };
+  //   gapi.load("client:auth2", start);
+  // };
 
-  const authenticate = async () => {
-    await gapi.auth2
-      .getAuthInstance()
-      .signIn()
-      .then(() => console.log("Sign-in successful"))
-      .catch((err: any) => console.error("Error signing in", err));
-  };
+  // const authenticate = async () => {
+  //   await gapi.auth2
+  //     .getAuthInstance()
+  //     .signIn()
+  //     .then(() => console.log("Sign-in successful"))
+  //     .catch((err: any) => console.error("Error signing in", err));
+  // };
 
-  const execute = () => {
-    gapi.client.youtube.commentThreads
-      .insert({
-        part: ["snippet"],
-        resource: {
-          snippet: {
-            videoId: videoId,
-            topLevelComment: {
-              snippet: {
-                textOriginal: "This is a test comment - <>",
-              },
-            },
-          },
-        },
-      })
-      .then((response: any) => console.log("Response", response))
-      .catch((err: any) => console.error("Execute error", err));
-  };
+  // const execute = () => {
+  //   gapi.client.youtube.commentThreads
+  //     .insert({
+  //       part: ["snippet"],
+  //       resource: {
+  //         snippet: {
+  //           videoId: videoId,
+  //           topLevelComment: {
+  //             snippet: {
+  //               textOriginal: "This is a test comment - <>",
+  //             },
+  //           },
+  //         },
+  //       },
+  //     })
+  //     .then((response: any) => console.log("Response", response))
+  //     .catch((err: any) => console.error("Execute error", err));
+  // };
 
   return (
     <>
@@ -174,10 +175,10 @@ const LikeComp = () => {
               </>
             ))}
         </div>
-        <button onClick={() => authenticate().then(loadClient)}>
+        {/* <button onClick={() => authenticate().then(loadClient)}>
           Authorize and Load
         </button>
-        <button onClick={execute}>Execute</button>
+        <button onClick={execute}>Execute</button> */}
       </div>
     </>
   );

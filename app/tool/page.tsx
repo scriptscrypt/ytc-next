@@ -1,3 +1,5 @@
+"use client";
+
 import { title } from "@/components/primitives";
 import LikeComp from "@/components/Likes/LikeComp";
 
