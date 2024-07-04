@@ -6,6 +6,7 @@ import { envYTAPIKEY, envYTCLIENTID } from "@/config/envVars";
 import { Input } from "@nextui-org/input";
 import { Button } from "@nextui-org/button";
 import { Divider } from "@nextui-org/divider";
+import {Spinner} from "@nextui-org/spinner";
 import Image from "next/image";
 import Link from "next/link";
 import { gapi } from "gapi-script";
@@ -13,23 +14,28 @@ import { gapi } from "gapi-script";
 const LikeComp = () => {
   const [comments, setComments] = useState([]);
   const [videoId, setVideoId] = useState("");
+  const [loadingComments, setLoadingComments] = useState(false);
   const ytAPIKey = envYTAPIKEY;
   // const videoId = "GzW4qSM2bbk";
 
   const fetchVideoId = (url: string) => {
+    // Regular expression to match various YouTube URL formats, including shorts and live
     const regExp =
-      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      /^.*(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/|live\/)([^#&?]*).*/;
+
     const match = url.match(regExp);
 
-    console.log(match && match[2]);
-    setVideoId(match && match[2].length === 11 ? match[2] : "");
-    return match && match[2].length === 11 ? match[2] : null;
+    console.log(match && match[1]);
+    setVideoId(match && match[1].length === 11 ? match[1] : "");
+    return match && match[1].length === 11 ? match[1] : null;
   };
 
   const fetchComments = async (apiKey: string, videoId: string) => {
+    setLoadingComments(true);
     const response = await axios.get(
       `https://www.googleapis.com/youtube/v3/commentThreads?key=${apiKey}&videoId=${videoId}&part=snippet`
     );
+    setLoadingComments(false);
     return response.data.items;
   };
 
@@ -119,61 +125,78 @@ const LikeComp = () => {
   return (
     <>
       <div className="flex flex-col gap-8 mt-4">
-        <div className="flex items-center justify-center gap-4 mt-4">
+        <div className="flex justify-between gap-4 mt-4">
           <Input
+            isClearable
             onChange={(e) => fetchVideoId(e.target.value)}
             size="sm"
             type="text"
             label="Youtube Video Link"
+            className="text-left"
+            description={`Currently supporting Video & Shorts. Live videos are under development.`}
+            errorMessage="Invalid URL"
+            isInvalid={!videoId && !(comments?.length == 0)}
           />
-          <Button size="lg" onClick={() => likeAllComments()}>
+          <Button
+            isDisabled={!videoId}
+            color="primary"
+            size="lg"
+            onClick={() => likeAllComments()}
+          >
             Fetch
           </Button>
         </div>
         <div>
-          <Link href={`https://www.youtube.com/watch?v=${videoId}`}>
-            {" "}
-            Go to Video{" "}
-          </Link>
           {/* <p>videoId : {videoId}</p> */}
           {/* <Divider /> */}
-          {comments &&
-            comments.map((comment: any) => (
-              <>
-                <div
-                  key={comment.id}
-                  className="flex justify-between p-2 gap-2"
-                >
-                  <div className="text-md text-left">
-                    {comment.snippet.topLevelComment.snippet.textOriginal}
-                  </div>
-                  <Link
-                    target="_blank"
-                    href={`https://www.youtube.com/${comment.snippet.topLevelComment.snippet.authorDisplayName}`}
+          {loadingComments && <Spinner />}
+          {!loadingComments && comments && comments.length > 0 && (
+            <>
+              <Link
+                target="_blank"
+                href={`https://www.youtube.com/watch?v=${videoId}`}
+              >
+                {" "}
+                Go to Video{" "}
+              </Link>
+              {comments.map((comment: any) => (
+                <>
+                  <div
+                    key={comment.id}
+                    className="flex justify-between p-2 gap-4 rounded-md"
                   >
-                    <div className="flex">
-                      <Image
-                        src={
-                          comment.snippet.topLevelComment.snippet
-                            .authorProfileImageUrl
-                        }
-                        alt="Profile Image"
-                        width={16}
-                        height={16}
-                        className="rounded-full w-4 h-4"
-                      />
-                      <div className="ml-2 text-sm text-slate-500">
-                        {
-                          comment.snippet.topLevelComment.snippet
-                            .authorDisplayName
-                        }
-                      </div>
+                    <div className="text-md text-left">
+                      {comment.snippet.topLevelComment.snippet.textOriginal}
                     </div>
-                  </Link>
-                </div>
-                <Divider />
-              </>
-            ))}
+                    <Link
+                      target="_blank"
+                      href={`https://www.youtube.com/${comment.snippet.topLevelComment.snippet.authorDisplayName}`}
+                    >
+                      <div className="flex items-center gap-1">
+                        <Image
+                          src={
+                            comment.snippet.topLevelComment.snippet
+                              .authorProfileImageUrl
+                          }
+                          alt="Profile Image"
+                          width={16}
+                          height={16}
+                          className="rounded-full w-4 h-4"
+                        />
+                        <div className="text-sm text-slate-500 hover:opacity-80">
+                          {
+                            comment.snippet.topLevelComment.snippet
+                              .authorDisplayName
+                          }
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
+                  <Divider />
+                </>
+              ))}
+            </>
+          )}
         </div>
         {/* <button onClick={() => authenticate().then(loadClient)}>
           Authorize and Load
