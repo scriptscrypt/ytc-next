@@ -6,17 +6,18 @@ import { envYTAPIKEY, envYTCLIENTID } from "@/config/envVars";
 import { Input } from "@nextui-org/input";
 import { Button } from "@nextui-org/button";
 import { Divider } from "@nextui-org/divider";
-import {Spinner} from "@nextui-org/spinner";
+import { Spinner } from "@nextui-org/spinner";
 import Image from "next/image";
 import Link from "next/link";
 import { gapi } from "gapi-script";
+import useGoogle from "@/hooks/useGoogle";
 
 const LikeComp = () => {
   const [comments, setComments] = useState([]);
   const [videoId, setVideoId] = useState("");
   const [loadingComments, setLoadingComments] = useState(false);
+  const [accessToken, setAccessToken] = useState("");
   const ytAPIKey = envYTAPIKEY;
-  // const videoId = "GzW4qSM2bbk";
 
   const fetchVideoId = (url: string) => {
     // Regular expression to match various YouTube URL formats, including shorts and live
@@ -30,7 +31,7 @@ const LikeComp = () => {
     return match && match[1].length === 11 ? match[1] : null;
   };
 
-  const fetchComments = async (apiKey: string, videoId: string) => {
+  const apiFetchComments = async (apiKey: string, videoId: string) => {
     setLoadingComments(true);
     const response = await axios.get(
       `https://www.googleapis.com/youtube/v3/commentThreads?key=${apiKey}&videoId=${videoId}&part=snippet`
@@ -39,88 +40,63 @@ const LikeComp = () => {
     return response.data.items;
   };
 
-  const extractAndSetComments = (comments: any) => {
-    // const commentTexts = comments.map(
-    //   (item: any) => item.snippet.topLevelComment.snippet.textOriginal
-    // );
-    setComments(comments.items);
-  };
-
-  const likeComment = async (apiKey: string, commentId: string) => {
+  const apiReplyComment = async (commentId: string): Promise<void> => {
     await axios.post(
-      `https://www.googleapis.com/youtube/v3/comments?part=snippet&key=${apiKey}`,
+      `https://www.googleapis.com/youtube/v3/comments?part=id,snippet&key=${ytAPIKey}`,
       {
-        id: commentId,
+        // id: commentId,
         snippet: {
+          parentId: commentId,
           textOriginal: "Thank you",
         },
       },
       {
         headers: {
-          key: apiKey,
+          Authorization: `Bearer ${accessToken || ""}`,
         },
       }
     );
   };
 
-  const likeAllComments = async () => {
+  const fnFetchAllComments = async () => {
     try {
-      const comments = await fetchComments(ytAPIKey || "", videoId);
-      console.log(comments?.items);
+      const comments = await apiFetchComments(ytAPIKey || "", videoId);
       setComments(comments);
-      // extractAndSetComments(comments);
-
-      // for (const commentThread of comments) {
-      //   const commentId = commentThread.id;
-      //   console.log(commentThread);
-
-      //   await likeComment(ytAPIKey || "", commentId);
-      // }
     } catch (error) {
       console.error("Error liking comments:", error);
     }
   };
 
-  // const loadClient = () => {
-  //   const start = () =>
-  //     gapi.client.init({
-  //       apiKey: ytAPIKey || "",
-  //       clientId: envYTCLIENTID,
-  //       discoveryDocs: [
-  //         "https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest",
-  //       ],
-  //       scope: "https://www.googleapis.com/auth/youtube.force-ssl",
-  //     });
+  const fnExtractCommentId = (comment: any) => {
+    return comment.snippet.topLevelComment.id;
+  };
 
-  //   gapi.load("client:auth2", start);
-  // };
+  const fnExecuteComments = async () => {
+    console.log("execute");
+    console.log(comments);
+    // likeComment();
+    await authenticateWithGoogle();
+    await apiReplyComment(await fnExtractCommentId(comments[4]));
+  };
 
-  // const authenticate = async () => {
-  //   await gapi.auth2
-  //     .getAuthInstance()
-  //     .signIn()
-  //     .then(() => console.log("Sign-in successful"))
-  //     .catch((err: any) => console.error("Error signing in", err));
-  // };
-
-  // const execute = () => {
-  //   gapi.client.youtube.commentThreads
-  //     .insert({
-  //       part: ["snippet"],
-  //       resource: {
-  //         snippet: {
-  //           videoId: videoId,
-  //           topLevelComment: {
-  //             snippet: {
-  //               textOriginal: "This is a test comment - <>",
-  //             },
-  //           },
-  //         },
-  //       },
-  //     })
-  //     .then((response: any) => console.log("Response", response))
-  //     .catch((err: any) => console.error("Execute error", err));
-  // };
+  useGoogle();
+  const authenticateWithGoogle = async () => {
+    await gapi.auth2
+      .getAuthInstance()
+      .signIn()
+      .then(() => {
+        console.log(
+          "Sign-in successful",
+          gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse()
+            .access_token
+        );
+        setAccessToken(
+          gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse()
+            .access_token
+        );
+      })
+      .catch((err: any) => console.error("Error signing in", err));
+  };
 
   return (
     <>
@@ -141,7 +117,7 @@ const LikeComp = () => {
             isDisabled={!videoId}
             color="primary"
             size="lg"
-            onClick={() => likeAllComments()}
+            onClick={() => fnFetchAllComments()}
           >
             Fetch
           </Button>
@@ -198,7 +174,16 @@ const LikeComp = () => {
             </>
           )}
         </div>
-        {/* <button onClick={() => authenticate().then(loadClient)}>
+        <Divider />
+
+        {/* <Button onClick={() => authenticateWithGoogle()} color="success" size="lg">
+          authenticateWithGoogle
+        </Button> */}
+        <Button onClick={() => fnExecuteComments()} color="success" size="lg">
+          Reply with Thank you
+        </Button>
+
+        {/* <button onClick={() => authenticateWithGoogle().then(loadClient)}>
           Authorize and Load
         </button>
         <button onClick={execute}>Execute</button> */}
