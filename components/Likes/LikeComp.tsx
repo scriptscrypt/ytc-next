@@ -11,15 +11,49 @@ import Image from "next/image";
 import Link from "next/link";
 import { gapi } from "gapi-script";
 import useGoogle from "@/hooks/useGoogle";
+import { utilExtractCommentId } from "@/utils/functions/utilExtractCommentId";
+import LikingStatusModal from "../modals/LikingStatusModal";
+import { useDisclosure } from "@nextui-org/modal";
+import { on } from "events";
 
 const LikeComp = () => {
   const [comments, setComments] = useState([]);
   const [videoId, setVideoId] = useState("");
   const [loadingComments, setLoadingComments] = useState(false);
   const [accessToken, setAccessToken] = useState("");
+  const [replyingTo, setReplyingTo] = useState({
+    commentId: "",
+    commentText: "",
+  });
+  const [replyCount, setReplyCount] = useState({
+    totalComments: 0,
+    currentComment: 0,
+  });
   const ytAPIKey = envYTAPIKEY;
 
-  const fetchVideoId = (url: string) => {
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  useGoogle();
+  const authenticateWithGoogle = async () => {
+    await gapi.auth2
+      .getAuthInstance()
+      .signIn()
+      .then(() => {
+        console.log(
+          "Sign-in successful",
+          gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse()
+            .access_token
+        );
+
+        localStorage.setItem(
+          "access_token",
+          gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse()
+            .access_token
+        );
+      })
+      .catch((err: any) => console.error("Error signing in", err));
+  };
+
+  const fnFetchVideoId = (url: string) => {
     // Regular expression to match various YouTube URL formats, including shorts and live
     const regExp =
       /^.*(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/|live\/)([^#&?]*).*/;
@@ -52,7 +86,7 @@ const LikeComp = () => {
       },
       {
         headers: {
-          Authorization: `Bearer ${accessToken || ""}`,
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
         },
       }
     );
@@ -67,44 +101,37 @@ const LikeComp = () => {
     }
   };
 
-  const fnExtractCommentId = (comment: any) => {
-    return comment.snippet.topLevelComment.id;
-  };
-
   const fnExecuteComments = async () => {
     console.log("execute");
     console.log(comments);
     // likeComment();
     await authenticateWithGoogle();
-    await apiReplyComment(await fnExtractCommentId(comments[4]));
-  };
+    // await apiReplyComment(await utilExtractCommentId(comments[4]));
 
-  useGoogle();
-  const authenticateWithGoogle = async () => {
-    await gapi.auth2
-      .getAuthInstance()
-      .signIn()
-      .then(() => {
-        console.log(
-          "Sign-in successful",
-          gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse()
-            .access_token
-        );
-        setAccessToken(
-          gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse()
-            .access_token
-        );
-      })
-      .catch((err: any) => console.error("Error signing in", err));
+    // For all comments :
+    onOpen();
+    setReplyCount({ totalComments: comments.length, currentComment: 0 });
+    for (let i = 0; i < comments.length; i++) {
+      setReplyCount({ ...replyCount, currentComment: i + 1 });
+      setReplyingTo({
+        ...replyingTo,
+        commentId: await utilExtractCommentId(comments[i]),
+        commentText:
+          (comments &&
+            comments?[i].snippet?.topLevelComment?.snippet?.textOriginal) ||
+          "",
+      });
+      await apiReplyComment(await utilExtractCommentId(comments[i]));
+    }
   };
 
   return (
     <>
       <div className="flex flex-col gap-8 mt-4">
-        <div className="flex justify-between gap-4 mt-4">
+        <div className="flex justify-between gap-4 mt-2">
           <Input
             isClearable
-            onChange={(e) => fetchVideoId(e.target.value)}
+            onChange={(e) => fnFetchVideoId(e.target.value)}
             size="sm"
             type="text"
             label="Youtube Video Link"
@@ -126,15 +153,36 @@ const LikeComp = () => {
           {/* <p>videoId : {videoId}</p> */}
           {/* <Divider /> */}
           {loadingComments && <Spinner />}
+
           {!loadingComments && comments && comments.length > 0 && (
             <>
-              <Link
-                target="_blank"
-                href={`https://www.youtube.com/watch?v=${videoId}`}
-              >
-                {" "}
-                Go to Video{" "}
-              </Link>
+              <div className=" flex justify-between items-center pb-4">
+                <Button
+                  color="default"
+                  size="md"
+                  radius="md"
+                  onClick={() =>
+                    window.open(
+                      `https://www.youtube.com/watch?v=${videoId}`,
+                      "_blank"
+                    )
+                  }
+                >
+                  {" "}
+                  Go to Video{" "}
+                </Button>
+
+                <Button
+                  onClick={() => fnExecuteComments()}
+                  color="default"
+                  size="md"
+                  radius="md"
+                >
+                  Reply with Thank you
+                </Button>
+              </div>
+
+              <Divider />
               {comments.map((comment: any) => (
                 <>
                   <div
@@ -174,19 +222,20 @@ const LikeComp = () => {
             </>
           )}
         </div>
-        <Divider />
 
         {/* <Button onClick={() => authenticateWithGoogle()} color="success" size="lg">
           authenticateWithGoogle
         </Button> */}
-        <Button onClick={() => fnExecuteComments()} color="success" size="lg">
-          Reply with Thank you
-        </Button>
 
         {/* <button onClick={() => authenticateWithGoogle().then(loadClient)}>
           Authorize and Load
         </button>
         <button onClick={execute}>Execute</button> */}
+        <LikingStatusModal
+          commentTxt={replyingTo?.commentText}
+          totalComments={replyCount?.totalComments}
+          currentComment={replyCount?.currentComment}
+        />
       </div>
     </>
   );
