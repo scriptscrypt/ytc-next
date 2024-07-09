@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import axios from "axios";
-import { envYTAPIKEY, envYTCLIENTID } from "@/config/envVars";
+import { envYTAPIKEY } from "@/config/envVars";
 import { Input } from "@nextui-org/input";
 import { Button } from "@nextui-org/button";
 import { Divider } from "@nextui-org/divider";
@@ -12,9 +12,7 @@ import Link from "next/link";
 import { gapi } from "gapi-script";
 import useGoogle from "@/hooks/useGoogle";
 import { utilExtractCommentId } from "@/utils/functions/utilExtractCommentId";
-import LikingStatusModal from "../modals/LikingStatusModal";
 import { useDisclosure } from "@nextui-org/modal";
-import { on } from "events";
 
 const LikeComp = () => {
   const [comments, setComments] = useState([]);
@@ -29,9 +27,9 @@ const LikeComp = () => {
     totalComments: 0,
     currentComment: 0,
   });
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const ytAPIKey = envYTAPIKEY;
 
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
   useGoogle();
   const authenticateWithGoogle = async () => {
     await gapi.auth2
@@ -44,10 +42,19 @@ const LikeComp = () => {
             .access_token
         );
 
-        localStorage.setItem(
-          "access_token",
+        setAccessToken(
           gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse()
             .access_token
+        );
+        localStorage.setItem(
+          "access_token",
+          JSON.stringify(
+            gapi.auth2
+              .getAuthInstance()
+              .currentUser.get()
+              .getAuthResponse()
+              .access_token.text()
+          )
         );
       })
       .catch((err: any) => console.error("Error signing in", err));
@@ -74,11 +81,10 @@ const LikeComp = () => {
     return response.data.items;
   };
 
-  const apiReplyComment = async (commentId: string): Promise<void> => {
+  const apiReplyComment = async (commentId: string) => {
     await axios.post(
-      `https://www.googleapis.com/youtube/v3/comments?part=id,snippet&key=${ytAPIKey}`,
+      `https://www.googleapis.com/youtube/v3/comments?part=id,snippet`,
       {
-        // id: commentId,
         snippet: {
           parentId: commentId,
           textOriginal: "Thank you",
@@ -86,7 +92,7 @@ const LikeComp = () => {
       },
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
       }
     );
@@ -102,27 +108,29 @@ const LikeComp = () => {
   };
 
   const fnExecuteComments = async () => {
-    console.log("execute");
+    console.log("Execute function called");
     console.log(comments);
     // likeComment();
+    // if(localStorage.getItem("access_token") === null){
     await authenticateWithGoogle();
-    // await apiReplyComment(await utilExtractCommentId(comments[4]));
+    // }
+    await apiReplyComment(utilExtractCommentId(comments[4]));
 
     // For all comments :
-    onOpen();
-    setReplyCount({ totalComments: comments.length, currentComment: 0 });
-    for (let i = 0; i < comments.length; i++) {
-      setReplyCount({ ...replyCount, currentComment: i + 1 });
-      setReplyingTo({
-        ...replyingTo,
-        commentId: await utilExtractCommentId(comments[i]),
-        commentText:
-          (comments &&
-            comments?[i].snippet?.topLevelComment?.snippet?.textOriginal) ||
-          "",
-      });
-      await apiReplyComment(await utilExtractCommentId(comments[i]));
-    }
+    // onOpen();
+    // setReplyCount({ totalComments: comments.length, currentComment: 0 });
+    // for (let i = 0; i < comments.length; i++) {
+    //   // setReplyCount({ ...replyCount, currentComment: i + 1 });
+    //   // setReplyingTo({
+    //   //   ...replyingTo,
+    //   //   commentId: await utilExtractCommentId(comments[i]),
+    //   //   commentText:
+    //   //     (comments &&
+    //   //       comments[i]) ||
+    //   //     "",
+    //   // });
+    //   await apiReplyComment(await utilExtractCommentId(comments[i]));
+    // }
   };
 
   return (
@@ -231,11 +239,11 @@ const LikeComp = () => {
           Authorize and Load
         </button>
         <button onClick={execute}>Execute</button> */}
-        <LikingStatusModal
+        {/* <LikingStatusModal
           commentTxt={replyingTo?.commentText}
           totalComments={replyCount?.totalComments}
           currentComment={replyCount?.currentComment}
-        />
+        /> */}
       </div>
     </>
   );

@@ -43,7 +43,7 @@ export default function Home() {
       <div className="mt-8">
         <Snippet hideCopyButton hideSymbol variant="flat">
           <span>
-           All you need is a <Code color="primary"> Youtube video link </Code>
+            All you need is a <Code color="primary"> Youtube video link </Code>
           </span>
         </Snippet>
       </div>

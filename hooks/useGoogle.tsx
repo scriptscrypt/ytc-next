@@ -16,7 +16,7 @@ const useGoogle = () => {
                 // 'discoveryDocs': [discoveryUrl],
                 'scope': SCOPE
             });
-            console.log("Google loaded");
+            console.log("Google loaded from useGoogle");
         };
 
         const script = document.createElement('script');
@@ -28,6 +28,7 @@ const useGoogle = () => {
 
         document.body.appendChild(script);
 
+        console.log("useGoogle called");
         return () => {
             document.body.removeChild(script);
         };
