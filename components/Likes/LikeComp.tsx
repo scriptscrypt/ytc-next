@@ -13,6 +13,7 @@ import { gapi } from "gapi-script";
 import useGoogle from "@/hooks/useGoogle";
 import { utilExtractCommentId } from "@/utils/functions/utilExtractCommentId";
 import { useDisclosure } from "@nextui-org/modal";
+import { useIsClient } from "@/contexts/IsClientCtx";
 
 const LikeComp = () => {
   const [comments, setComments] = useState([]);
@@ -29,6 +30,8 @@ const LikeComp = () => {
   });
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const ytAPIKey = envYTAPIKEY;
+
+  const isClient = useIsClient();
 
   useGoogle();
   const authenticateWithGoogle = async () => {
@@ -170,6 +173,7 @@ const LikeComp = () => {
                   size="md"
                   radius="md"
                   onClick={() =>
+                    isClient &&
                     window.open(
                       `https://www.youtube.com/watch?v=${videoId}`,
                       "_blank"
