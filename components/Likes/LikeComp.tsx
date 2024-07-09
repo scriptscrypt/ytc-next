@@ -15,7 +15,7 @@ import { utilExtractCommentId } from "@/utils/functions/utilExtractCommentId";
 import { useDisclosure } from "@nextui-org/modal";
 import { useIsClient } from "@/contexts/IsClientCtx";
 
-const LikeComp = () => {
+export const LikeComp = () => {
   const [comments, setComments] = useState([]);
   const [videoId, setVideoId] = useState("");
   const [loadingComments, setLoadingComments] = useState(false);
@@ -253,4 +253,4 @@ const LikeComp = () => {
   );
 };
 
-export default LikeComp;
+// export default LikeComp;
