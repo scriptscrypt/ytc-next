@@ -1,4 +1,5 @@
 // https://stackoverflow.com/a/75692565/19887674
+"use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
 
