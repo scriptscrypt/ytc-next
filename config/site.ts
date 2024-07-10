@@ -4,10 +4,10 @@ export const siteConfig = {
   name: "YTC - Youtube Comment Tool",
   description: "Your Youtube comments simplified and sorted just like that",
   navItems: [
-    {
-      label: "Home",
-      href: "/",
-    },
+    // {
+    //   label: "Home",
+    //   href: "/",
+    // },
     {
       label: "Tool",
       href: "/tool",

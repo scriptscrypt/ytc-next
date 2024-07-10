@@ -1,25 +1,37 @@
 "use client";
 
-import { useState } from "react";
-import axios from "axios";
-import { envYTAPIKEY } from "@/config/envVars";
+import { SetStateAction, useEffect, useRef, useState } from "react";
 import { Input } from "@nextui-org/input";
 import { Button } from "@nextui-org/button";
 import { Divider } from "@nextui-org/divider";
 import { Spinner } from "@nextui-org/spinner";
 import Image from "next/image";
 import Link from "next/link";
-import { gapi } from "gapi-script";
-import useGoogle from "@/hooks/useGoogle";
 import { utilExtractCommentId } from "@/utils/functions/utilExtractCommentId";
 import { useDisclosure } from "@nextui-org/modal";
 import { useIsClient } from "@/contexts/IsClientCtx";
+import { Tabs, Tab } from "@nextui-org/tabs";
+import {
+  apiFetchComments,
+  apiGetVideoDetails,
+  apiReplyComment,
+} from "@/services/YTApis";
+import { useGoogleAuth } from "@/services/GoogleAuth";
+import { utilFetchVideoId } from "@/utils/functions/utilFetchVideoId";
+import { utilCropUsername } from "@/utils/functions/utilCropUsername";
 
 export const LikeComp = () => {
   const [comments, setComments] = useState([]);
+  const [videoDetails, setVideoDetails] = useState({
+    videoId: "",
+    videoThumbnail: "",
+    videoTitle: "",
+  });
   const [videoId, setVideoId] = useState("");
-  const [loadingComments, setLoadingComments] = useState(false);
-  const [accessToken, setAccessToken] = useState("");
+  const [loading, setLoading] = useState({
+    comments: false,
+    videoDetails: false,
+  });
   const [replyingTo, setReplyingTo] = useState({
     commentId: "",
     commentText: "",
@@ -28,86 +40,28 @@ export const LikeComp = () => {
     totalComments: 0,
     currentComment: 0,
   });
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const ytAPIKey = envYTAPIKEY;
+  const [commentIpTxt, setCommentIpTxt] = useState("");
+  const [currentTab, setCurrentTab] = useState<SetStateAction<string>>("All");
 
   const isClient = useIsClient();
 
-  useGoogle();
-  const authenticateWithGoogle = async () => {
-    await gapi.auth2
-      .getAuthInstance()
-      .signIn()
-      .then(() => {
-        console.log(
-          "Sign-in successful",
-          gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse()
-            .access_token
-        );
-
-        setAccessToken(
-          gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse()
-            .access_token
-        );
-        localStorage.setItem(
-          "access_token",
-          JSON.stringify(
-            gapi.auth2
-              .getAuthInstance()
-              .currentUser.get()
-              .getAuthResponse()
-              .access_token.text()
-          )
-        );
-      })
-      .catch((err: any) => console.error("Error signing in", err));
-  };
-
-  const fnFetchVideoId = (url: string) => {
-    // Regular expression to match various YouTube URL formats, including shorts and live
-    const regExp =
-      /^.*(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/|live\/)([^#&?]*).*/;
-
-    const match = url.match(regExp);
-
-    console.log(match && match[1]);
-    setVideoId(match && match[1].length === 11 ? match[1] : "");
-    return match && match[1].length === 11 ? match[1] : null;
-  };
-
-  const apiFetchComments = async (apiKey: string, videoId: string) => {
-    setLoadingComments(true);
-    const response = await axios.get(
-      `https://www.googleapis.com/youtube/v3/commentThreads?key=${apiKey}&videoId=${videoId}&part=snippet`
-    );
-    setLoadingComments(false);
-    return response.data.items;
-  };
-
-  const apiReplyComment = async (commentId: string) => {
-    await axios.post(
-      `https://www.googleapis.com/youtube/v3/comments?part=id,snippet`,
-      {
-        snippet: {
-          parentId: commentId,
-          textOriginal: "Thank you",
-        },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
-      }
-    );
-  };
+  const { authenticateWithGoogle } = useGoogleAuth();
 
   const fnFetchAllComments = async () => {
+    setLoading({
+      ...loading,
+      comments: true,
+    });
     try {
-      const comments = await apiFetchComments(ytAPIKey || "", videoId);
+      const comments = await apiFetchComments(videoId);
       setComments(comments);
     } catch (error) {
       console.error("Error liking comments:", error);
     }
+    setLoading({
+      ...loading,
+      comments: false,
+    });
   };
 
   const fnExecuteComments = async () => {
@@ -117,7 +71,7 @@ export const LikeComp = () => {
     // if(localStorage.getItem("access_token") === null){
     await authenticateWithGoogle();
     // }
-    await apiReplyComment(utilExtractCommentId(comments[4]));
+    await apiReplyComment(utilExtractCommentId(comments[4]), commentIpTxt || "");
 
     // For all comments :
     // onOpen();
@@ -136,13 +90,65 @@ export const LikeComp = () => {
     // }
   };
 
+  const fnFetchVideoDetails = () => {
+    setLoading({
+      ...loading,
+      videoDetails: true,
+    });
+    if (videoId) {
+      apiGetVideoDetails(videoId)
+        .then((res) => {
+          console.log(res);
+
+          setVideoDetails({
+            ...videoDetails,
+            videoId: res[0].id,
+            videoThumbnail: res[0].snippet.thumbnails.high.url,
+            videoTitle: res[0].snippet.title,
+          });
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    }
+
+    setLoading({
+      ...loading,
+      videoDetails: false,
+    });
+  };
+
+  let tabs = [
+    {
+      id: "All",
+      label: "All Comments",
+      content: "Test",
+    },
+    {
+      id: "Interact",
+      label: "Interact",
+      content: "Test",
+    },
+  ];
+
+  useEffect(() => {
+    if (!videoId) return;
+    fnFetchVideoDetails();
+    fnFetchAllComments();
+    console.log(currentTab);
+  }, [videoId]);
+
+  useEffect(() => {
+    console.log("commentIpTxt", commentIpTxt);
+  }, [commentIpTxt]);
+
   return (
     <>
       <div className="flex flex-col gap-8 mt-4">
         <div className="flex justify-between gap-4 mt-2">
           <Input
             isClearable
-            onChange={(e) => fnFetchVideoId(e.target.value)}
+            onChange={(e) => setVideoId(utilFetchVideoId(e.target.value) || "")}
             size="sm"
             type="text"
             label="Youtube Video Link"
@@ -161,93 +167,120 @@ export const LikeComp = () => {
           </Button>
         </div>
         <div>
-          {/* <p>videoId : {videoId}</p> */}
-          {/* <Divider /> */}
-          {loadingComments && <Spinner />}
-
-          {!loadingComments && comments && comments.length > 0 && (
-            <>
-              <div className=" flex justify-between items-center pb-4">
-                <Button
-                  color="default"
-                  size="md"
-                  radius="md"
-                  onClick={() =>
-                    isClient &&
-                    window.open(
-                      `https://www.youtube.com/watch?v=${videoId}`,
-                      "_blank"
-                    )
-                  }
-                >
-                  {" "}
-                  Go to Video{" "}
-                </Button>
-
-                <Button
-                  onClick={() => fnExecuteComments()}
-                  color="default"
-                  size="md"
-                  radius="md"
-                >
-                  Reply with Thank you
-                </Button>
+          <div className="flex flex-col gap-4">
+            {videoId && (
+              <div
+                className="cursor-pointer w-full"
+                onClick={() =>
+                  isClient &&
+                  window.open(
+                    `https://www.youtube.com/watch?v=${videoId}`,
+                    "_blank"
+                  )
+                }
+              >
+                {videoDetails && (
+                  <Image
+                    className="rounded-lg shadow-inner hover:shadow-lg"
+                    src={videoDetails?.videoThumbnail.toString()}
+                    alt={videoDetails?.videoTitle}
+                    // width={`${videoDetails?.videoThumbnail.width}`}
+                    width={240}
+                    height={80}
+                  />
+                )}
               </div>
+            )}
+            <Tabs
+              selectedKey={currentTab.toString() || tabs[0]?.id}
+              onSelectionChange={(e) => setCurrentTab(e.toString())}
+              aria-label="Comment Actions Tab"
+              items={tabs}
+            >
+              {(item) => (
+                <Tab key={item.id} title={item.label}>
+                  {currentTab == "All" && (
+                    <>
+                      {loading?.comments && <Spinner />}
+                      {!loading?.comments &&
+                        comments &&
+                        comments.length > 0 && (
+                          <>
+                            {/* <Divider /> */}
+                            {comments.map((comment: any) => (
+                              <div key={comment?.snippet?.topLevelComment?.id}>
+                                <div className="flex justify-between w-full p-2 gap-4 rounded-md">
+                                  <div className="text-md text-left">
+                                    {
+                                      comment.snippet.topLevelComment.snippet
+                                        .textOriginal
+                                    }
+                                  </div>
+                                  <div className="">
+                                    <Link
+                                      target="_blank"
+                                      href={`https://www.youtube.com/${comment.snippet.topLevelComment.snippet.authorDisplayName}`}
+                                    >
+                                      <div className="flex items-center gap-1">
+                                        <Image
+                                          src={
+                                            comment.snippet.topLevelComment
+                                              .snippet.authorProfileImageUrl
+                                          }
+                                          alt="Profile Image"
+                                          width={16}
+                                          height={16}
+                                          className="rounded-full w-4 h-4"
+                                        />
+                                        <div className="text-sm text-slate-500 hover:opacity-80">
+                                          {utilCropUsername(
+                                            comment.snippet.topLevelComment
+                                              .snippet.authorDisplayName
+                                          )}
+                                        </div>
+                                      </div>
+                                    </Link>
+                                  </div>{" "}
+                                </div>
 
-              <Divider />
-              {comments.map((comment: any) => (
-                <>
-                  <div
-                    key={comment.id}
-                    className="flex justify-between p-2 gap-4 rounded-md"
-                  >
-                    <div className="text-md text-left">
-                      {comment.snippet.topLevelComment.snippet.textOriginal}
-                    </div>
-                    <Link
-                      target="_blank"
-                      href={`https://www.youtube.com/${comment.snippet.topLevelComment.snippet.authorDisplayName}`}
-                    >
-                      <div className="flex items-center gap-1">
-                        <Image
-                          src={
-                            comment.snippet.topLevelComment.snippet
-                              .authorProfileImageUrl
-                          }
-                          alt="Profile Image"
-                          width={16}
-                          height={16}
-                          className="rounded-full w-4 h-4"
-                        />
-                        <div className="text-sm text-slate-500 hover:opacity-80">
-                          {
-                            comment.snippet.topLevelComment.snippet
-                              .authorDisplayName
-                          }
+                                <Divider />
+                              </div>
+                            ))}
+                          </>
+                        )}
+                    </>
+                  )}
+
+                  {currentTab == "Interact" && (
+                    <>
+                      {loading?.videoDetails && <Spinner />}
+                      {!loading?.videoDetails && (
+                        <div className=" flex flex-col justify-between items-center gap-2 pb-4">
+                          <div className="flex w-full gap-2">
+                            <Input
+                              className="w-full"
+                              label="Enter your Reply text"
+                              onChange={(e) => setCommentIpTxt(e.target.value)}
+                              size="sm"
+                            />
+                            <Button
+                              onClick={() => fnExecuteComments()}
+                              color="default"
+                              size="lg"
+                              radius="md"
+                            >
+                              Reply
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  </div>
-                  <Divider />
-                </>
-              ))}
-            </>
-          )}
+                      )}
+                    </>
+                  )}
+                </Tab>
+              )}
+            </Tabs>
+          </div>
         </div>
-
-        {/* <Button onClick={() => authenticateWithGoogle()} color="success" size="lg">
-          authenticateWithGoogle
-        </Button> */}
-
-        {/* <button onClick={() => authenticateWithGoogle().then(loadClient)}>
-          Authorize and Load
-        </button>
-        <button onClick={execute}>Execute</button> */}
-        {/* <LikingStatusModal
-          commentTxt={replyingTo?.commentText}
-          totalComments={replyCount?.totalComments}
-          currentComment={replyCount?.currentComment}
-        /> */}
       </div>
     </>
   );
