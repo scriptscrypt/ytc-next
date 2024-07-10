@@ -26,6 +26,7 @@ export const ToolComp = () => {
     videoId: "",
     videoThumbnail: "",
     videoTitle: "",
+    videoDescription: "",
   });
   const [videoId, setVideoId] = useState("");
   const [loading, setLoading] = useState({
@@ -108,6 +109,7 @@ export const ToolComp = () => {
             videoId: res[0].id,
             videoThumbnail: res[0].snippet.thumbnails.high.url,
             videoTitle: res[0].snippet.title,
+            videoDescription: res[0].snippet.description,
           });
         })
         .catch((err) => {
@@ -161,9 +163,11 @@ export const ToolComp = () => {
             isInvalid={!videoId && !(comments?.length == 0)}
           />
           <Button
+            size="lg"
+            radius="sm"
+            // className="rounded-small"
             isDisabled={!videoId}
             color="primary"
-            size="lg"
             onClick={() => fnFetchAllComments()}
           >
             Fetch
@@ -184,14 +188,29 @@ export const ToolComp = () => {
                   }
                 >
                   {videoDetails && (
-                    <Image
-                      className="rounded-lg shadow-inner hover:shadow-lg"
-                      src={videoDetails?.videoThumbnail.toString()}
-                      alt={videoDetails?.videoTitle}
-                      // width={`${videoDetails?.videoThumbnail.width}`}
-                      width={240}
-                      height={80}
-                    />
+                    <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full bg-default-100 p-4 rounded-xl hover:shadow-md">
+                      <Image
+                        className="rounded-lg shadow-inner hover:shadow-lg"
+                        src={videoDetails?.videoThumbnail.toString()}
+                        alt={videoDetails?.videoTitle}
+                        // width={`${videoDetails?.videoThumbnail.width}`}
+                        width={240}
+                        height={80}
+                      />
+
+                      <div className="flex flex-col gap-2">
+                        <div className="font-semibold text-left">
+                          {videoDetails?.videoTitle}
+                        </div>
+
+                        <div className="text-sm text-left">
+                          {utilCropUsername(
+                            videoDetails?.videoDescription,
+                            144
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
@@ -241,7 +260,8 @@ export const ToolComp = () => {
                                           <div className="text-sm text-slate-500 hover:opacity-80">
                                             {utilCropUsername(
                                               comment.snippet.topLevelComment
-                                                .snippet.authorDisplayName
+                                                .snippet.authorDisplayName,
+                                              8
                                             )}
                                           </div>
                                         </div>

@@ -1,6 +1,6 @@
-export const utilCropUsername = (username: string) => {
-  if (username.length > 8) {
-    return username.toString().slice(0, 8) + "...";
+export const utilCropUsername = (username: string, length: number) => {
+  if (username.length > length) {
+    return username.toString().slice(0, length) + "...";
   } else {
     return username;
   }
