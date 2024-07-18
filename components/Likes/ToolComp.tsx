@@ -72,15 +72,15 @@ export const ToolComp = () => {
     // if(localStorage.getItem("access_token") === null){
     await authenticateWithGoogle();
     // }
-    await apiReplyComment(
-      utilExtractCommentId(comments[4]),
-      commentIpTxt || ""
-    );
+    // await apiReplyComment(
+    //   utilExtractCommentId(comments[4]),
+    //   commentIpTxt || ""
+    // );
 
     // For all comments :
     // onOpen();
     // setReplyCount({ totalComments: comments.length, currentComment: 0 });
-    // for (let i = 0; i < comments.length; i++) {
+    for (let i = 0; i < comments.length; i++) {
     //   // setReplyCount({ ...replyCount, currentComment: i + 1 });
     //   // setReplyingTo({
     //   //   ...replyingTo,
@@ -90,8 +90,8 @@ export const ToolComp = () => {
     //   //       comments[i]) ||
     //   //     "",
     //   // });
-    //   await apiReplyComment(await utilExtractCommentId(comments[i]));
-    // }
+      await apiReplyComment(await utilExtractCommentId(comments[i]), commentIpTxt || "");
+    }
   };
 
   const fnFetchVideoDetails = () => {
@@ -177,20 +177,20 @@ export const ToolComp = () => {
           {videoId && (
             <div className="flex flex-col gap-4">
               {videoId && (
-                <div
-                  className="cursor-pointer w-full"
-                  onClick={() =>
-                    isClient &&
-                    window.open(
-                      `https://www.youtube.com/watch?v=${videoId}`,
-                      "_blank"
-                    )
-                  }
-                >
+                <div className="cursor-pointer w-full">
                   {videoDetails && (
-                    <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full bg-default-100 p-4 rounded-xl hover:shadow-md">
+                    <div
+                      onClick={() =>
+                        isClient &&
+                        window.open(
+                          `https://www.youtube.com/watch?v=${videoId}`,
+                          "_blank"
+                        )
+                      }
+                      className="flex flex-wrap sm:flex-nowrap gap-4 w-full bg-default-100 p-4 rounded-xl hover:shadow-sm  hover:scale-95 duration-400"
+                    >
                       <Image
-                        className="rounded-lg shadow-inner hover:shadow-lg"
+                        className="rounded-lg shadow-inner hover:shadow-lg hover:scale-95 duration-300"
                         src={videoDetails?.videoThumbnail.toString()}
                         alt={videoDetails?.videoTitle}
                         // width={`${videoDetails?.videoThumbnail.width}`}
@@ -198,12 +198,12 @@ export const ToolComp = () => {
                         height={80}
                       />
 
-                      <div className="flex flex-col gap-2">
+                      <div className="sm:flex flex-col gap-2">
                         <div className="font-semibold text-left">
                           {videoDetails?.videoTitle}
                         </div>
 
-                        <div className="text-sm text-left">
+                        <div className="hidden sm:block text-sm text-left">
                           {utilCropUsername(
                             videoDetails?.videoDescription,
                             144
